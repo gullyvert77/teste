@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferramenta de Trading</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .candle-animation {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .candle {
+            position: absolute;
+            width: 2px;
+            background: rgba(0, 255, 0, 0.1);
+            animation: candleMove 3s linear infinite;
+        }
+
+        @keyframes candleMove {
+            0% { transform: translateY(100vh); }
+            100% { transform: translateY(-100%); }
+        }
+
+        .menu {
+            position: fixed;
+            top: 0;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            transition: 0.3s;
+            z-index: 1000;
+        }
+
+        .menu.active {
+            left: 0;
+        }
+
+        .menu button {
+            background: none;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px;
+            width: 100%;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: 0.3s;
+        }
+
+        .menu button:hover {
+            background: #00ff00;
+            color: #000;
+        }
+
+        .toggle-menu {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: none;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        .container {
+            padding: 20px;
+            text-align: center;
+            margin-top: 60px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .select {
+            background: #000;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            width: 100%;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+
+        .btn {
+            background: #000;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.3s;
+        }
+
+        .btn:hover {
+            background: #00ff00;
+            color: #000;
+        }
+
+        .signal {
+            margin-top: 20px;
+            font-size: 24px;
+            padding: 20px;
+            border: 2px solid #00ff00;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .arrow {
+            font-size: 40px;
+            margin-left: 10px;
+        }
+
+        .generating-signal {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .strength-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff00;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, #ff0000, #ffd700, #00ff00);
+            transition: width 0.5s;
+        }
+
+        .broker-link {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+
+        .broker-link a {
+            background: #000;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 20px;
+            text-decoration: none;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+
+        .broker-link a:hover {
+            background: #00ff00;
+            color: #000;
+        }
+
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: transparent;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border: 1px solid #00ff00;
+            text-align: center;
+            width: 300px;
+        }
+        .login-container h2 {
+            margin-bottom: 20px;
+            color: #00ff00;
+        }
+        .login-container input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #00ff00;
+            background: #000;
+            color: #00ff00;
+        }
+        .login-container button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #00ff00;
+            background: #000;
+            color: #00ff00;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .login-container button:hover {
+            background: #00ff00;
+            color: #000;
+        }
+        body.login-active .container,
+        body.login-active .menu,
+        body.login-active .toggle-menu,
+        body.login-active .broker-link {
+            display: none;
+        }
+        body:not(.login-active) .candle {
+            background: rgba(0, 255, 0, 0.3);
+        }
+        body.login-active .candle {
+            background: rgba(0, 255, 0, 0.3);
+        }
+    </style>
+</head>
+<body class="login-active">
+    <div id="login-overlay">
+        <div class="login-container">
+            <h2>Login</h2>
+            <input type="text" id="login-username" placeholder="Usuário">
+            <input type="password" id="login-password" placeholder="Senha">
+            <button onclick="validateLogin()">Entrar</button>
+            <p id="login-error" style="color: red; display: none;">Usuário ou senha inválidos!</p>
+        </div>
+    </div>
+
+    <div class="candle-animation" id="candle-animation"></div>
+
+    <button class="toggle-menu" onclick="toggleMenu()">☰ Menu</button>
+    <div class="menu" id="menu">
+        <div style="margin-top: 40px;">
+            <button onclick="toggleSoroCalculator()">Calculadora de Soro</button>
+            <div id="soro-calculator" style="display: none; margin-top: 10px; background: rgba(0, 0, 0, 0.9); padding: 10px; border: 1px solid #00ff00;">
+                <label>Valor Inicial:</label>
+                <input type="number" id="soro-valor" style="width: 100%; margin-bottom: 5px;">
+                <label>Taxa (%):</label>
+                <input type="number" id="soro-taxa" step="0.1" style="width: 100%; margin-bottom: 5px;">
+                <label>Número de Soro:</label>
+                <input type="number" id="soro-ciclos" style="width: 100%; margin-bottom: 5px;">
+                <button onclick="executarSoro()" style="width: 100%; margin-bottom: 5px;">Calcular</button>
+                <table id="soro-tabela" style="width: 100%; border-collapse: collapse; color: #00ff00; display: none;">
+                    <thead>
+                        <tr>
+                            <th style="border: 1px solid #00ff00; padding: 5px;">Soro</th>
+                            <th style="border: 1px solid #00ff00; padding: 5px;">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button onclick="toggleMartingaleCalculator()">Calculadora de Martingale</button>
+            <div id="martingale-calculator" style="display: none; margin-top: 10px; background: rgba(0, 0, 0, 0.9); padding: 10px; border: 1px solid #00ff00;">
+                <label>Entrada:</label>
+                <input type="number" id="martingale-entrada" style="width: 100%; margin-bottom: 5px;">
+                <label>Fator:</label>
+                <input type="number" id="martingale-fator" step="0.1" style="width: 100%; margin-bottom: 5px;">
+                <label>Ciclos:</label>
+                <input type="number" id="martingale-ciclos" style="width: 100%; margin-bottom: 5px;">
+                <button onclick="executarMartingale()" style="width: 100%; margin-bottom: 5px;">Calcular</button>
+                <table id="martingale-tabela" style="width: 100%; border-collapse: collapse; color: #00ff00; display: none;">
+                    <thead>
+                        <tr>
+                            <th style="border: 1px solid #00ff00; padding: 5px;">Ciclo</th>
+                            <th style="border: 1px solid #00ff00; padding: 5px;">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button onclick="alert('Estratégias')">Estratégias</button>
+            <button onclick="alert('Gerenciamento')">Gerenciamento</button>
+            <button onclick="alert('Notícias')">Notícias</button>
+            <button onclick="alert('Tutorial')">Tutorial</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>FERRAMENTA DE TRADING</h1>
+        <label>Ativo:</label>
+        <select class="select" id="ativo" onchange="liberarBotao()">
+            <option>EUR/USD</option>
+            <option>GBP/CHF</option>
+            <option>GBP/JPY</option>
+            <option>USD/CAD</option>
+            <option>USD/CHF</option>
+            <option>USD/JPY</option>
+            <option>GBP/USD</option>
+            <option>AUD/USD</option>
+            <option>NZD/USD</option>
+            <option>BTC/USD</option>
+            <option>XRP/USD</option>
+            <option>BCH/USD</option>
+            <option>LTC/USD</option>
+            <option>ETH/USD</option>
+        </select>
+        <label>Expiração:</label>
+        <select class="select" id="expiracao" onchange="liberarBotao()">
+            <option>1 Minuto</option>
+            <option>5 Minutos</option>
+            <option>15 Minutos</option>
+        </select>
+        <button class="btn" id="analisar-btn" onclick="gerarSinal()">Analisar</button>
+
+        <div class="strength-bar">
+            <div class="strength-fill" id="strength-fill"></div>
+        </div>
+
+        <div class="signal" id="sinal">
+            <p class="generating-signal">AGUARDANDO SINAL...</p>
+        </div>
+    </div>
+
+    <div class="broker-link">
+        <a href="https://pumabroker.com" target="_blank">Ir para Corretora</a>
+    </div>
+
+    <script>
+        let sinalSendoGerado = false;
+        let sinalGerado = false; // Controla se o sinal já foi gerado
+        let sinalAtual = null;  // Armazena o sinal atual
+        let forcaAtual = null;  // Armazena a força atual
+        let proximaVela = null; // Armazena o horário da próxima vela
+        let temporizador = null; // Armazena o temporizador
+        let blinkEmAndamento = false; // Evita sobreposição da animação de piscar
+
+        function createCandles() {
+            const animationDiv = document.getElementById('candle-animation');
+            for (let i = 0; i < 50; i++) {
+                const candle = document.createElement('div');
+                candle.className = 'candle';
+                candle.style.left = Math.random() * 100 + '%';
+                candle.style.height = Math.random() * 50 + 20 + 'px';
+                candle.style.animationDelay = Math.random() * 3 + 's';
+                animationDiv.appendChild(candle);
+            }
+        }
+        createCandles();
+
+        function toggleMenu() {
+            const menu = document.getElementById('menu');
+            menu.classList.toggle('active');
+            if (menu.classList.contains('active')) {
+                document.querySelector('.toggle-menu').style.zIndex = '1002';
+            } else {
+                document.querySelector('.toggle-menu').style.zIndex = '1001';
+            }
+        }
+
+        // Ao alterar ativo ou expiração, libera o botão e permite novo sinal
+        function liberarBotao() {
+            sinalGerado = false;
+            if (temporizador) {
+                clearInterval(temporizador);
+            }
+        }
+
+        function gerarSinal() {
+            let nextFlag = false;
+            // Se já houver um sinal gerado, verifica o tempo restante para a próxima vela
+            if (sinalGerado) {
+                const agora = new Date();
+                const [horaProxima, minutoProxima] = proximaVela.split(':');
+                let dataProximaVela = new Date(
+                    agora.getFullYear(),
+                    agora.getMonth(),
+                    agora.getDate(),
+                    parseInt(horaProxima),
+                    parseInt(minutoProxima),
+                    0
+                );
+                if (dataProximaVela < agora) {
+                    dataProximaVela.setDate(dataProximaVela.getDate() + 1);
+                }
+                const tempoRestante = (dataProximaVela - agora) / 1000;
+                // Se houver mais de 20 segundos restantes, apenas pisca (sem atualizar o sinal)
+                if (tempoRestante > 20) {
+                    if (blinkEmAndamento) return;
+                    blinkEmAndamento = true;
+                    const sinalElement = document.getElementById("sinal");
+                    const strengthFill = document.getElementById("strength-fill");
+                    sinalElement.style.animation = 'blink 0.5s ease 3';
+                    strengthFill.style.animation = 'blink 0.5s ease 3';
+                    setTimeout(() => {
+                        sinalElement.style.animation = '';
+                        strengthFill.style.animation = '';
+                        blinkEmAndamento = false;
+                    }, 1500);
+                    return;
+                } else {
+                    // Se faltar 20 segundos ou menos, gera novo sinal para a próxima vela
+                    nextFlag = true;
+                }
+            }
+            
+            if (sinalSendoGerado) return;
+            sinalSendoGerado = true;
+            
+            document.getElementById("sinal").innerHTML = '<p class="generating-signal">ANALISANDO MERCADO...</p>';
+            document.getElementById("strength-fill").style.width = '0%';
+
+            const ativo = document.getElementById("ativo").value;
+            const expiracao = document.getElementById("expiracao").value;
+            
+            // Mapeamento de timeframe
+            const timeframeMap = {
+                '1 Minuto': '1m',
+                '5 Minutos': '5m',
+                '15 Minutos': '15m'
+            };
+            const timeframe = timeframeMap[expiracao];
+            const url = `/signal?symbol=${encodeURIComponent(ativo)}&timeframe=${timeframe}${nextFlag ? '&next=1' : ''}`;
+
+            fetch(url)
+            .then(response => {
+                if(!response.ok) throw new Error('Erro na requisição');
+                return response.json();
+            })
+            .then(data => {
+                const [hours, minutes] = data.next_candle.split(':');
+                document.getElementById("sinal").innerHTML = `
+                    <p style="color: ${data.color}; font-size: 32px;">${data.signal}</p>
+                    <p>Próxima vela: ${hours}:${minutes}</p>
+                `;
+                document.getElementById("strength-fill").style.width = `${data.strength}%`;
+
+                // Armazena os dados do novo sinal
+                sinalAtual = data.signal;
+                forcaAtual = data.strength;
+                proximaVela = data.next_candle;
+
+                sinalGerado = true;
+                iniciarTemporizador(proximaVela);
+            })
+            .catch(err => {
+                console.error('Erro:', err);
+                document.getElementById("sinal").innerHTML = '<p style="color: #ff0000;">Erro na análise</p>';
+            })
+            .finally(() => {
+                sinalSendoGerado = false;
+            });
+        }
+
+        function iniciarTemporizador(proximaVela) {
+            temporizador = setInterval(() => {
+                const agora = new Date();
+                const [horaProxima, minutoProxima] = proximaVela.split(':');
+                const dataProximaVela = new Date(
+                    agora.getFullYear(),
+                    agora.getMonth(),
+                    agora.getDate(),
+                    parseInt(horaProxima),
+                    parseInt(minutoProxima),
+                    0
+                );
+                const tempoRestante = (dataProximaVela - agora) / 1000;
+                // Quando faltar 20 segundos ou menos, permite gerar um novo sinal para a próxima vela
+                if (tempoRestante <= 20) {
+                    clearInterval(temporizador);
+                    sinalGerado = false;
+                }
+            }, 1000);
+        }
+
+        function toggleMartingaleCalculator() {
+            const calcDiv = document.getElementById('martingale-calculator');
+            calcDiv.style.display = calcDiv.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function executarMartingale() {
+            const entrada = parseFloat(document.getElementById('martingale-entrada').value);
+            const fator = parseFloat(document.getElementById('martingale-fator').value);
+            const ciclos = parseInt(document.getElementById('martingale-ciclos').value);
+
+            if (isNaN(entrada) || isNaN(fator) || isNaN(ciclos) || entrada <= 0 || fator <= 1 || ciclos <= 0) {
+                alert("Por favor, insira valores válidos.");
+                return;
+            }
+
+            const tabela = document.getElementById('martingale-tabela');
+            const tbody = tabela.getElementsByTagName('tbody')[0];
+            tbody.innerHTML = '';
+
+            let valorAtual = entrada;
+            let totalMartingale = 0;
+            for (let i = 1; i <= ciclos; i++) {
+                const tr = document.createElement('tr');
+
+                const tdCiclo = document.createElement('td');
+                tdCiclo.style.border = '1px solid #00ff00';
+                tdCiclo.style.padding = '5px';
+                tdCiclo.textContent = i;
+
+                const tdValor = document.createElement('td');
+                tdValor.style.border = '1px solid #00ff00';
+                tdValor.style.padding = '5px';
+                tdValor.textContent = "R$ " + valorAtual.toFixed(2);
+
+                tr.appendChild(tdCiclo);
+                tr.appendChild(tdValor);
+                tbody.appendChild(tr);
+
+                totalMartingale += valorAtual;
+                valorAtual *= fator;
+            }
+
+            const trTotal = document.createElement('tr');
+            const tdTotalLabel = document.createElement('td');
+            tdTotalLabel.style.border = '1px solid #00ff00';
+            tdTotalLabel.style.padding = '5px';
+            tdTotalLabel.textContent = "Total";
+            const tdTotalValor = document.createElement('td');
+            tdTotalValor.style.border = '1px solid #00ff00';
+            tdTotalValor.style.padding = '5px';
+            tdTotalValor.textContent = "R$ " + totalMartingale.toFixed(2);
+            trTotal.appendChild(tdTotalLabel);
+            trTotal.appendChild(tdTotalValor);
+            tbody.appendChild(trTotal);
+
+            tabela.style.display = 'table';
+        }
+
+        function toggleSoroCalculator() {
+            const calcDiv = document.getElementById('soro-calculator');
+            calcDiv.style.display = calcDiv.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function executarSoro() {
+            const valorInicial = parseFloat(document.getElementById('soro-valor').value);
+            const taxa = parseFloat(document.getElementById('soro-taxa').value);
+            const ciclos = parseInt(document.getElementById('soro-ciclos').value);
+
+            if (isNaN(valorInicial) || isNaN(taxa) || isNaN(ciclos) || valorInicial <= 0 || ciclos <= 0) {
+                alert("Por favor, insira valores válidos.");
+                return;
+            }
+
+            const tabela = document.getElementById('soro-tabela');
+            const tbody = tabela.getElementsByTagName('tbody')[0];
+            tbody.innerHTML = '';
+
+            let valorAtual = valorInicial;
+            let totalSoro = 0;
+            for (let i = 1; i <= ciclos; i++) {
+                const tr = document.createElement('tr');
+
+                const tdSoro = document.createElement('td');
+                tdSoro.style.border = '1px solid #00ff00';
+                tdSoro.style.padding = '5px';
+                tdSoro.textContent = i;
+
+                const tdValor = document.createElement('td');
+                tdValor.style.border = '1px solid #00ff00';
+                tdValor.style.padding = '5px';
+                tdValor.textContent = "R$ " + valorAtual.toFixed(2);
+
+                tr.appendChild(tdSoro);
+                tr.appendChild(tdValor);
+                tbody.appendChild(tr);
+
+                totalSoro += valorAtual;
+                valorAtual = valorAtual + (valorAtual * (taxa / 100));
+            }
+
+            const trTotal = document.createElement('tr');
+            const tdTotalLabel = document.createElement('td');
+            tdTotalLabel.style.border = '1px solid #00ff00';
+            tdTotalLabel.style.padding = '5px';
+            tdTotalLabel.textContent = "Total";
+            const tdTotalValor = document.createElement('td');
+            tdTotalValor.style.border = '1px solid #00ff00';
+            tdTotalValor.style.padding = '5px';
+            tdTotalValor.textContent = "R$ " + totalSoro.toFixed(2);
+            trTotal.appendChild(tdTotalLabel);
+            trTotal.appendChild(tdTotalValor);
+            tbody.appendChild(trTotal);
+
+            tabela.style.display = 'table';
+        }
+
+        function validateLogin() {
+            const user = document.getElementById("login-username").value;
+            const pass = document.getElementById("login-password").value;
+            if(user === "admin" && pass === "1234"){
+                document.getElementById("login-overlay").style.display = "none";
+                document.body.classList.remove("login-active");
+            } else {
+                document.getElementById("login-error").style.display = "block";
+            }
+        }
+    </script>
+</body>
+</html>
